@@ -3,6 +3,7 @@ import { authService } from "../../../services/Auth";
 import { appRoutes } from "../../../constants/appRoutes";
 import { FormManager } from "../../../core/FormManager/FormManager";
 import { storageService } from "../../../services/Storage";
+import { databaseService } from "../../../services/Database";
 
 export class AdminPage extends Component {
   constructor() {
@@ -23,18 +24,29 @@ export class AdminPage extends Component {
   }
 
   createMovie = (data) => {
-    toggleIsLoading();
-    storageService.uploadPoster(data.poster)
+    this.toggleIsLoading();
+    storageService
+      .uploadPoster(data.poster)
       .then((snapshot) => {
         storageService.getDownloadURL(snapshot.ref).then((url) => {
-          console.log(url)
-        })
+          databaseService
+            .create("movies", {
+              ...data,
+              poster: url,
+            })
+            .catch((error) => {
+              console.log(error);
+            });
+        });
       })
-  }
+      .finally(() => {
+        this.toggleIsLoading();
+      });
+  };
 
   componentDidMount() {
-    this.form.init(this.querySelector('.send-data'), {})
-    this.addEventListener('submit', this.form.handleSubmit(this.createMovie))
+    this.form.init(this.querySelector(".send-data"), {});
+    this.addEventListener("submit", this.form.handleSubmit(this.createMovie));
     if (!authService.user) {
       this.dispatch("change-route", {
         target: appRoutes[this.props.path ?? "signUp"],
